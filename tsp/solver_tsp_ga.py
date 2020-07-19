@@ -41,13 +41,14 @@ def solve_it(input_data):
             khoang_cach[j][i] = khoang_cach[i][j]
 
     chieu_dai_gen = nodeCount
-    so_luong_quan_the = 200
+    so_luong_quan_the = 500
     GenMax = 300
 
     def khoi_tao():
         nghiem = []
         for i in range(so_luong_quan_the):
-            tp = list(np.random.permutation(chieu_dai_gen))
+            tp = [0]
+            tp.extend(list(np.random.permutation(chieu_dai_gen - 1) + 1))
             nghiem.append(tp)
         return nghiem
 
@@ -93,10 +94,20 @@ def solve_it(input_data):
         child[i] = child[j]
         child[j] = temp
         return child
+    
+    def dot_bien_dao_doan(cha):
+        i = np.random.randint(int(chieu_dai_gen/2), chieu_dai_gen)
+        j = np.random.randint(1, i)
+        child = cha.copy()
+        res = []
+        res.extend(child[:j])
+        res.extend(child[j:i][::-1])
+        res.extend(child[i:])
+        return res
 
     def sinh_quan_the(nghiem):
         cha_me_uu_tu = 0.2
-        ti_le_dot_bien = 0.05
+        ti_le_dot_bien = 0.1
         cha_me_ngau_nhien = 0.08
 
         luong_cha_me_uu_tu = int(cha_me_uu_tu*len(nghiem))
@@ -115,6 +126,7 @@ def solve_it(input_data):
 
         con_cai = []
         luong_con_cai = len(nghiem) - len(cha_me)
+        ite = 0
         while (len(con_cai) < luong_con_cai):
             me = nghiem[np.random.randint(0, len(cha_me) - 1)]
             cha = nghiem[np.random.randint(0, len(cha_me) - 1)]
@@ -122,11 +134,15 @@ def solve_it(input_data):
             p2 = np.random.randint(1, p1)
             child1, child2 = toan_tu_lai_2_diem(cha, me, p2, p1, chieu_dai_gen)
             if (ti_le_dot_bien > np.random.rand()):
-                child1 = dot_bien(child1)
+                if ite%2 == 0:
+                    child1 = dot_bien(child1)
+                else:
+                    child1 = dot_bien_dao_doan(child1)
+                ite += 1
             con_cai.append(child1)
             con_cai.append(child2)
             if (len(con_cai) + 1 == luong_con_cai):
-                dot_bien(child2)
+                dot_bien_dao_doan(child2)
                 con_cai.append(child2)
             
         cha_me.extend(con_cai)

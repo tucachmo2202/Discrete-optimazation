@@ -249,7 +249,7 @@ class Solution:
         return a * self.total_distance() / len(self.connection)
 
     def search(self):
-        step_limit = 55000
+        step_limit = 50000
         cur_connection = copy.deepcopy(self.connection)
         cur_distance = self.total_distance()
         cur_augmented_distance = self.total_augmented_distance()
@@ -257,7 +257,7 @@ class Solution:
         best_distance   = cur_distance
         repeat = 0
         for i in range(step_limit):
-            # print("[INFO] Step :%s - best_distance : %0.5f" %(str(i), best_distance))
+            print("[INFO] Step :%s - best_distance : %0.5f" %(str(i), best_distance))
             while self.activate.ones > 0:
                 for j in range(len(self.activate)):
                     if not self.activate.get(j):

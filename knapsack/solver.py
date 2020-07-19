@@ -1,102 +1,179 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+
 from collections import namedtuple
-from operator import attrgetter
-from typing import  List, Tuple
+import random
+
+class Item(object):
+    def __init__(self, v, w):
+        self.value = v # Item's value. You want to maximize that!
+        self.weight = w # Item's weight. The sum of all items should be <= CAPACITY
+
+INF = -10000000
+
 
 def solve_it(input_data):
+    # Modify this code to run your optimization algorithm
+
+    # parse the input
     lines = input_data.split('\n')
+
     firstLine = lines[0].split()
     item_count = int(firstLine[0])
     capacity = int(firstLine[1])
-    items = []
-    for i in range(item_count):
-        line = lines[i+1]
+    
+    cost = []
+
+    ITEMS = []
+
+    for i in range(1, item_count+1):
+        line = lines[i]
         parts = line.split()
-        v, w = int(parts[0]), int(parts[1])
-        des = float(v) / w
-        items.append([Item(i, v, w), des])
+        ITEMS.append(Item(int(parts[0]), int(parts[1])))
 
-    #Sắp xếp items theo tỷ lệ value / weight
-    items = sorted(items, key = lambda x : x[1])
+    value = [0]
+    weight = [0]
+    taken = [0]*(item_count+1)
 
-    items = [i[0] for i in items[: : -1]]
-    obj, opt, taken = search(items, capacity)
-    output_data = str(obj) + ' ' + str(opt) + '\n'
-    output_data += ' '.join(map(str, taken))
-    return output_data
+    if(item_count*capacity > 10**8): #Su dung giai thuat di truyen
+        CAPACITY = capacity
 
-class Item:
-    def __init__(self, index : int, value : int, weight : int):
-        self.index = index 
-        self.value = value
-        self.weight = weight
+        # Kich thuoc quan the
+        POP_SIZE = 100
 
-#Ước tính giá trị giới hạn của 1 Node nào đó
-#Đầu vào là list items, sức chưa của túi index là chỉ số của Node
-def get_expectation(items : List[Item], capacity :int, index : int):
-    expectation = 0.0 
-    for i in range(index, len(items)):
-        item = items[i]
-        if capacity >= item.weight:
-            expectation += item.value
-            capacity -= item.weight
-        else:
-            expectation += float(item.value) * capacity / item.weight
-            break
-    return expectation
+        # So luong the he lon nhat
+        GEN_MAX = 200
 
-#Hàm tìm kiếm giải pháp
-def search(items : List[Item], capacity : int):
-    max_value = 0.0
-    max_taken = [0 for i in range(len(items))]
+        #Lua chon khoi tao quan the bang 0 hoac random
+        START_POP_WITH_ZEROES = True
 
-    start_value = 0.0
-    start_capacity = capacity
-    start_expectation = get_expectation(items, capacity, 0)
-    start_taken = [0 for i in range(len(items))]
-    index = 0
-    stack = []
-    stack.append([start_value, start_capacity, start_expectation, start_taken, index])
-    while(len(stack) != 0):
-        #cur_value: tổng value tính từ root
-        #cur_capacity: sức chứa còn lại của túi
-        #cur_taken: mảng chứa giá các đồ vật được lấy hay không được lấy
-        #Mỗi vòng lặp sẽ lấy ra 1 chuỗi các giá trị này để thực hiện ước tính
+        # END OF CONFIG
+        ##########################################################################################
 
-        cur_value, cur_capacity, cur_expectation, cur_taken, cur_pos = stack[-1]
-        del stack[-1]
-        if cur_capacity < 0:
-            continue
-        
-        #Nếu giá trị ước tính nhỏ hơn giá trị lớn nhất hiện tại thì tìm kiếm nhánh khác
-        if cur_expectation <= max_value:
-            continue
+        def fitness(target):
+            """
+            Dau vao 1 gen tra ve tong value cua gen do, gia tri value cang lon cang tot, neu khoi luong lon hon CAPACITY thi fitness = 0
+            """
+            total_value = 0
+            total_weight = 0
+            index = 0
+            for i in target:
+                if index >= len(ITEMS):
+                    break
+                if (i == 1):
+                    total_value += ITEMS[index].value
+                    total_weight += ITEMS[index].weight
+                index += 1
+                
+            
+            if total_weight > CAPACITY:
+                return 0
+            else:
+                # OK
+                return total_value
 
-        #Nếu giá trị lớn nhất hiện tại nhỏ hơn 1 giá trị được lấy ra thì đi theo nhánh đó
-        if max_value < cur_value:
-            max_value = cur_value
-            max_taken = cur_taken
-        if cur_pos >= len(items):
-            continue
-        cur_item = items[cur_pos]
-        
-        #Node đang xét không được lấy vào giải pháp
-        notake_value = cur_value
-        notake_capacity = cur_capacity
-        notake_expectation = notake_value + get_expectation(items, notake_capacity, cur_pos + 1)
-        notake_taken = cur_taken.copy()     
-        stack.append([notake_value, notake_capacity, notake_expectation, notake_taken, cur_pos + 1])
-        
-        #Node đang xet được lấy
-        take_value = cur_value + cur_item.value
-        take_capacity = cur_capacity - cur_item.weight
-        take_expectation = take_value + get_expectation(items, take_capacity, cur_pos + 1)
-        take_taken = cur_taken.copy()
-        take_taken[cur_item.index] = 1
-        stack.append([take_value, take_capacity, take_expectation, take_taken, cur_pos + 1])
-        
-    return int(max_value), 1 , max_taken
+        def spawn_starting_population(amount):
+            return [spawn_individual() for x in range (0,amount)]
+
+        def spawn_individual():
+            if START_POP_WITH_ZEROES:
+                return [random.randint(0,0) for x in range (0,len(ITEMS))]
+            else:
+                return [random.randint(0,1) for x in range (0,len(ITEMS))]
+
+        def mutate(target):
+            r = random.randint(0,len(target)-1)
+            if target[r] == 1:
+                target[r] = 0
+            else:
+                target[r] = 1
+
+        def evolve_population(pop):
+            parent_eligibility = 0.2 #Lay 20 % gia bo me tot nhat
+            mutation_chance = 0.05 # Xac suat dot bien la 5%
+            parent_lottery = 0.08  # Lay them 8% bo me bat ky
+
+            parent_length = int(parent_eligibility*len(pop))
+            parents = pop[:parent_length]
+            nonparents = pop[parent_length:]
+
+            # Lay bo me bat ki
+            for np in nonparents:
+                if parent_lottery > random.random():
+                    parents.append(np)
+
+            # Dot bien bo me
+            for p in parents:
+                if mutation_chance > random.random():
+                    mutate(p)
+
+            # Lua chon con 
+            children = []
+            desired_length = len(pop) - len(parents)
+            while len(children) < desired_length :
+                male = pop[random.randint(0,len(parents)-1)]
+                female = pop[random.randint(0,len(parents)-1)] 
+                half = random.randint(1,len(parents) - 1)
+                child = male[:half] + female[half:] # Lay 1 nua cha, 1 nua me
+                if mutation_chance > random.random():
+                    mutate(child)
+                children.append(child)
+
+            parents.extend(children)
+            return parents
+
+        def opt_big():
+            generation = 1
+            population = spawn_starting_population(POP_SIZE)
+            for g in range(0,GEN_MAX):
+                population = sorted(population, key=lambda x: fitness(x), reverse=True)
+                best = population[0]
+                population = evolve_population(population)
+                generation += 1
+            return best
+        taken = opt_big()
+        value = fitness(taken)
+        output_data = str(value) + ' ' + str(1) + '\n'
+        output_data += ' '.join(map(str, taken))
+        return output_data
+    else: #Quy hoach dong
+        for i in range(1, item_count+1):
+            line = lines[i]
+            parts = line.split()
+            value.append(int(parts[0]))
+            weight.append(int(parts[1]))
+
+        #ma tran chi phi
+        for i in range(item_count + 1):
+            cost.append([0]*(capacity + 1))
+
+        def opt():
+            
+            for i in range(1, item_count + 1):
+                for w in range(1, capacity + 1):
+                    if (weight[i] > w):
+                        cost[i][w] = cost[i-1][w]
+                    else:
+                        cost[i][w] = max(cost[i-1][w], cost[i-1][w-weight[i]] + value[i])
+            return cost[item_count][capacity]
+
+        def trace():
+            i = item_count
+            j = capacity
+            while (i>0 and j>0):
+                if (cost[i][j] != cost[i-1][j]):
+                    taken[i] = 1
+                    j = j - weight[i]
+                    i = i - 1
+                else:
+                    i = i - 1
+        value = opt()
+        trace()
+
+        output_data = str(value) + ' ' + str(1) + '\n'
+        output_data += ' '.join(map(str, taken[1:]))
+        return output_data
+
 
 if __name__ == '__main__':
     import sys
